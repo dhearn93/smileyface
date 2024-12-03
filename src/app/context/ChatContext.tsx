@@ -35,139 +35,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [messageSubscription, setMessageSubscription] = useState<RealtimeChannel | null>(null);
 
-  // Handle initial client-side setup
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    setMounted(true);
-    const storedUsername = localStorage.getItem('chatUsername') || '';
-    
-    // Check system preference first
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    // Then check stored preference
-    const storedDarkMode = localStorage.getItem('darkMode');
-    
-    setUsername(storedUsername);
-    // Use stored preference if it exists, otherwise use system preference
-    const shouldBeDark = storedDarkMode !== null ? storedDarkMode === 'true' : systemPrefersDark;
-    setIsDarkMode(shouldBeDark);
-    
-    // Immediately set the dark class
-    if (shouldBeDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, []);
-
-  // Handle dark mode changes
-  useEffect(() => {
-    if (!mounted) return;
-
-    localStorage.setItem('darkMode', isDarkMode.toString());
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode, mounted]);
-
-  // System preference listener
-  useEffect(() => {
-    if (!mounted) return;
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => {
-      // Only update if user hasn't set a preference
-      if (localStorage.getItem('darkMode') === null) {
-        setIsDarkMode(e.matches);
+  // Initialize database function
+  const initializeDatabase = async () => {
+    try {
+      const { error } = await supabase.rpc('initialize_messages_table');
+      if (error) {
+        console.error('Error initializing database:', error);
       }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [mounted]);
-
-  // Persist username
-  const handleSetUsername = (newUsername: string) => {
-    setUsername(newUsername);
-    localStorage.setItem('chatUsername', newUsername);
+    } catch (error) {
+      console.error('Error initializing database:', error);
+    }
   };
 
-  const toggleDarkMode = useCallback(() => {
-    setIsDarkMode(prev => !prev);
-  }, []);
-
-  // Set up real-time subscriptions and load initial messages
-  useEffect(() => {
-    if (!mounted) return;
-
-    let subscription: RealtimeChannel | null = null;
-
-    const initializeRealtime = async () => {
-      try {
-        // Clean up any existing subscription
-        if (subscription) {
-          await supabase.removeChannel(subscription);
-        }
-        subscription = await setupRealtime();
-      } catch (error) {
-        console.error('Error initializing realtime:', error);
-      }
-    };
-
-    initializeRealtime();
-
-    // Cleanup function
-    return () => {
-      if (subscription) {
-        console.log('Cleaning up subscription');
-        supabase.removeChannel(subscription);
-      }
-    };
-  }, [mounted]);
-
-  // Handle user presence
-  useEffect(() => {
-    if (!mounted || !username) return;
-
-    const presenceChannel = supabase.channel('online_users', {
-      config: {
-        presence: {
-          key: username,
-        },
-      },
-    });
-
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
-        const state = presenceChannel.presenceState();
-        const userList = Object.keys(state);
-        setOnlineUsers(userList);
-        setIsConnected(true);
-      })
-      .on('presence', { event: 'join' }, ({ key }) => {
-        setOnlineUsers((current) => Array.from(new Set([...current, key])));
-      })
-      .on('presence', { event: 'leave' }, ({ key }) => {
-        setOnlineUsers((current) => current.filter((u) => u !== key));
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await presenceChannel.track({
-            online_at: new Date().toISOString(),
-          });
-        }
-      });
-
-    return () => {
-      presenceChannel.unsubscribe();
-    };
-  }, [username, mounted]);
-
-  const setupRealtime = async (): Promise<RealtimeChannel | null> => {
+  // Setup realtime subscription
+  const setupRealtime = useCallback(async (): Promise<RealtimeChannel | null> => {
     try {
       // Load initial messages with better error handling
       const { data: initialMessages, error: loadError } = await supabase
@@ -217,19 +99,137 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       console.error('Error setting up realtime:', error);
       return null;
     }
+  }, []);
+
+  // Handle initial client-side setup
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    setMounted(true);
+    const storedUsername = localStorage.getItem('chatUsername') || '';
+    
+    // Check system preference first
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Then check stored preference
+    const storedDarkMode = localStorage.getItem('darkMode');
+    
+    setUsername(storedUsername);
+    // Use stored preference if it exists, otherwise use system preference
+    const shouldBeDark = storedDarkMode !== null ? storedDarkMode === 'true' : systemPrefersDark;
+    setIsDarkMode(shouldBeDark);
+    
+    // Immediately set the dark class
+    if (shouldBeDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  // Set up real-time subscriptions and load initial messages
+  useEffect(() => {
+    if (!mounted) return;
+
+    let subscription: RealtimeChannel | null = null;
+
+    const initializeRealtime = async () => {
+      try {
+        // Clean up any existing subscription
+        if (subscription) {
+          await supabase.removeChannel(subscription);
+        }
+        subscription = await setupRealtime();
+      } catch (error) {
+        console.error('Error initializing realtime:', error);
+      }
+    };
+
+    initializeRealtime();
+
+    // Cleanup function
+    return () => {
+      if (subscription) {
+        console.log('Cleaning up subscription');
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [mounted, setupRealtime]);
+
+  // Handle user presence
+  useEffect(() => {
+    if (!mounted || !username) return;
+
+    const presenceChannel = supabase.channel('online_users', {
+      config: {
+        presence: {
+          key: username,
+        },
+      },
+    });
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        const userList = Object.keys(state);
+        setOnlineUsers(userList);
+        setIsConnected(true);
+      })
+      .on('presence', { event: 'join' }, ({ key }) => {
+        setOnlineUsers((current) => Array.from(new Set([...current, key])));
+      })
+      .on('presence', { event: 'leave' }, ({ key }) => {
+        setOnlineUsers((current) => current.filter((u) => u !== key));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    return () => {
+      presenceChannel.unsubscribe();
+    };
+  }, [username, mounted]);
+
+  // Handle dark mode changes
+  useEffect(() => {
+    if (!mounted) return;
+
+    localStorage.setItem('darkMode', isDarkMode.toString());
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode, mounted]);
+
+  // System preference listener
+  useEffect(() => {
+    if (!mounted) return;
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      // Only update if user hasn't set a preference
+      if (localStorage.getItem('darkMode') === null) {
+        setIsDarkMode(e.matches);
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [mounted]);
+
+  // Persist username
+  const handleSetUsername = (newUsername: string) => {
+    setUsername(newUsername);
+    localStorage.setItem('chatUsername', newUsername);
   };
 
-  // Add this function to initialize the database
-  const initializeDatabase = async () => {
-    try {
-      const { error } = await supabase.rpc('initialize_messages_table');
-      if (error) {
-        console.error('Error initializing database:', error);
-      }
-    } catch (error) {
-      console.error('Error initializing database:', error);
-    }
-  };
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode(prev => !prev);
+  }, []);
 
   const sendMessage = async (content: string) => {
     if (!username) return;

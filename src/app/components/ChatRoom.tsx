@@ -7,7 +7,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { VirtualItem } from '@tanstack/react-virtual';
 
 export default function ChatRoom() {
-  const { messages, sendMessage, username, onlineUsers, isDarkMode, toggleDarkMode } = useChat();
+  const { messages, sendMessage, username, onlineUsers, isDarkMode } = useChat();
   const [newMessage, setNewMessage] = useState('');
   const [isUserListOpen, setIsUserListOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
