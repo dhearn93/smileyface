@@ -3,15 +3,27 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light mode - soft pastels */
+  --background: #fff5f5;  /* Soft pink background */
+  --foreground: #4a5568;  /* Muted navy text */
+  --primary-light: #c3a0c77b;  /* Soft pink */
+  --primary-dark: #ffe4f0;   /* Slightly deeper pink */
+  --secondary-light: #94debf;  /* Soft baby blue */
+  --secondary-dark: #cce7ff;   /* Slightly deeper baby blue */
+  --accent-light: #f0fff4;    /* Soft mint */
+  --accent-dark: #e0ffe9;     /* Slightly deeper mint */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  /* Dark mode - deep cohesive colors */
+  --background: #1a1a2e;    /* Deep navy background */
+  --foreground: #7a8ca3;    /* Light gray text */
+  --primary-light: #2a2a45;    /* Lighter navy */
+  --primary-dark: #25254b;     /* Deep navy */
+  --secondary-light: #2c3e50;  /* Blue-gray */
+  --secondary-dark: #310b8a7c;   /* Deeper blue-gray */
+  --accent-light: #2d3748;    /* Muted blue-gray */
+  --accent-dark: #063654;     /* Deep blue-gray */
 }
 
 body {
