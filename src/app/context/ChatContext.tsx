@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, PostgrestError } from '@supabase/supabase-js';
 
 interface Message {
   id: string;
@@ -26,18 +26,6 @@ const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 function generateUniqueId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
-
-// Add Database type definition
-interface Database {
-  public: {
-    Tables: {
-      messages: {
-        Row: Message;
-        Insert: Message;
-      };
-    };
-  };
 }
 
 export function ChatProvider({ children }: { children: ReactNode }) {
@@ -68,7 +56,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         .from('messages')
         .select('*')
         .order('timestamp', { ascending: true })
-        .limit(100) as { data: Message[] | null; error: any };
+        .limit(100) as { data: Message[] | null; error: PostgrestError | null };
 
       if (loadError) {
         console.error('Error loading messages:', loadError);
