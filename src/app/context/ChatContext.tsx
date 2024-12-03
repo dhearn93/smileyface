@@ -28,6 +28,18 @@ function generateUniqueId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// Add Database type definition
+interface Database {
+  public: {
+    Tables: {
+      messages: {
+        Row: Message;
+        Insert: Message;
+      };
+    };
+  };
+}
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [username, setUsername] = useState('');
@@ -51,21 +63,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // Setup realtime subscription
   const setupRealtime = useCallback(async (): Promise<RealtimeChannel | null> => {
     try {
-      // Load initial messages with better error handling
+      // Properly type the database query
       const { data: initialMessages, error: loadError } = await supabase
         .from('messages')
         .select('*')
         .order('timestamp', { ascending: true })
-        .limit(100);
+        .limit(100) as { data: Message[] | null; error: any };
 
       if (loadError) {
         console.error('Error loading messages:', loadError);
-        // Try to create the table if it doesn't exist
         await initializeDatabase();
         return null;
       }
 
       if (initialMessages) {
+        // Now TypeScript knows initialMessages is Message[]
         setMessages(initialMessages);
       }
 
@@ -245,9 +257,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       // Optimistic update
       setMessages(current => [...current, message]);
 
+      // Convert Message to Record<string, unknown> for Supabase
+      const messageRecord: Record<string, unknown> = {
+        id: message.id,
+        username: message.username,
+        content: message.content,
+        timestamp: message.timestamp,
+      };
+
       const { error } = await supabase
         .from('messages')
-        .insert([message]);
+        .insert([messageRecord]);
 
       if (error) {
         console.error('Error sending message:', error);
