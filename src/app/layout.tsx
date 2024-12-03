@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { Analytics } from '@vercel/analytics/react'
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -36,6 +37,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} h-screen overflow-hidden bg-gradient-to-br from-secondary-light via-primary-light to-accent-light dark:from-primary-dark dark:via-secondary-dark dark:to-accent-dark transition-colors duration-200`}>
         {children}
+        <Analytics />
       </body>
     </html>
   );
